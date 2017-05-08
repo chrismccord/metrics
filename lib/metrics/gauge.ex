@@ -15,7 +15,7 @@ defmodule Metrics.Gauge do
     {mod, func, args} = opts[:init] || {__MODULE__, :init_private, []}
 
     {:ok, val, priv} = apply(mod, func, [opts | args])
-    schedule_report({0, :seconds})
+    schedule_report({0, :second})
 
     {:ok, %{value: val,
             source: mfa,
@@ -31,7 +31,7 @@ defmodule Metrics.Gauge do
   @doc false
   def handle_info(:report, %{} = state) do
     {:ok, value, private} = fetch_data(state)
-    :ok = Metrics.Aggregator.report(state.group, :gauge, state.name, value, state.every)
+    :ok = Metrics.Supervisor.report(state.group, :gauge, state.name, value, state.every)
 
     schedule_report(state.every)
     {:noreply, %{state | value: value, private: private}}

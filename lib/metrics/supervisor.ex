@@ -1,25 +1,49 @@
-defmodule Metrics.Aggregator do
+defmodule Metrics.Supervisor do
   @moduledoc false
   use Supervisor
 
   @metric_types [:gauge, :meter]
 
-  def start_link(mod, otp_app) do
-    name = Module.concat(mod, "Aggregator")
-    Supervisor.start_link(__MODULE__, [mod, name, otp_app], name: name)
+  def start_link(mod, children, opts) do
+    name = Module.concat(mod, "Supervisor")
+    Supervisor.start_link(__MODULE__, [mod, children, opts], name: name)
   end
 
-  def init([mod, _name, otp_app]) do
+  def init([mod, children, opts]) do
     create_table(mod)
-    opts = Application.get_env(otp_app, mod) || []
     registry = registry_name(mod)
 
     children = [
       supervisor(Registry, [:duplicate, registry]),
-      # worker(Aggregator.Server, [mod, registry]),
-    ] ++ mod.child_spec(opts)
+    ] ++ child_spec(mod, children)
 
-    supervise children, strategy: :one_for_one
+    supervise children, opts
+  end
+
+  defp child_spec(mod, children) do
+    Enum.map(children, fn
+      {:gauge, spec} -> gauge_spec(mod, spec)
+      {:meter, spec} -> meter_spec(mod, spec)
+      other -> other
+    end)
+  end
+
+  defp gauge_spec(mod, {name, opts}) do
+    worker(Metrics.Gauge, [[
+      name: name,
+      group: opts[:group] || mod,
+      source: opts[:source] || {mod, name, []},
+      init: opts[:init],
+      every: opts[:every],
+    ]], id: name)
+  end
+
+  defp meter_spec(mod, {name, opts}) do
+    worker(Metrics.Meter, [[
+      name: name,
+      group: opts[:group] || mod,
+      every: opts[:every],
+    ]], id: name)
   end
 
   def register(group) do

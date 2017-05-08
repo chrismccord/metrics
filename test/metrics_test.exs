@@ -4,12 +4,12 @@ defmodule Metrics.MetricsTest do
   alias Metrics.Meter
 
   defmodule MeterMetrics do
-    use Metrics, otp_app: :metrics
+    import Metrics
 
-    def child_spec(_opts) do
-      [
-        meter(:requests, every: {0.25, :seconds}),
-      ]
+    def start_link do
+      Metrics.Supervisor.start_link(__MODULE__, [
+        meter(:requests, every: {250, :millisecond}),
+      ], strategy: :one_for_one)
     end
 
     def memory(state) do
@@ -18,12 +18,12 @@ defmodule Metrics.MetricsTest do
   end
 
   defmodule GaugeMetrics do
-    use Metrics, otp_app: :metrics
+    import Metrics
 
-    def child_spec(_opts) do
-      [
-        gauge(:memory,   every: {0.1, :seconds}),
-      ]
+    def start_link do
+      Metrics.Supervisor.start_link(__MODULE__, [
+        gauge(:memory, every: {100, :millisecond}),
+      ], strategy: :one_for_one)
     end
 
     def memory(state) do
@@ -40,8 +40,8 @@ defmodule Metrics.MetricsTest do
       Meter.mark(MeterMetrics, :requests)
       Meter.mark(MeterMetrics, :requests)
 
-      assert_receive {:metric, :meter, :requests, 3, {0.25, :seconds}}
-      assert_receive {:metric, :meter, :requests, 0, {0.25, :seconds}}, 500
+      assert_receive {:metric, :meter, :requests, 3, {250, :millisecond}}
+      assert_receive {:metric, :meter, :requests, 0, {250, :millisecond}}, 500
     end
   end
 
@@ -50,8 +50,8 @@ defmodule Metrics.MetricsTest do
       {:ok, _metrics} = GaugeMetrics.start_link()
       Metrics.register(GaugeMetrics, :memory)
 
-      assert_receive {:metric, :gauge, :memory, _, {0.1, :seconds}}, 200
-      assert_receive {:metric, :gauge, :memory, _, {0.1, :seconds}}, 200
+      assert_receive {:metric, :gauge, :memory, _, {100, :millisecond}}, 200
+      assert_receive {:metric, :gauge, :memory, _, {100, :millisecond}}, 200
     end
   end
 end

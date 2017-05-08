@@ -27,7 +27,7 @@ defmodule Metrics.Meter do
       |> :ets.new([:public, :named_table, read_concurrency: true])
 
     0 = reset_counter(marks_tab, :marks)
-    schedule_report({0, :seconds})
+    schedule_report({0, :second})
 
     {:ok, %{name: meter_name,
             group: group,
@@ -38,7 +38,7 @@ defmodule Metrics.Meter do
   def handle_info(:report, state) do
     marks = lookup_counter(state.marks_tab, :marks)
     0 = reset_counter(state.marks_tab, :marks)
-    :ok = Metrics.Aggregator.report(state.group, :meter, state.name, marks, state.every)
+    :ok = Metrics.Supervisor.report(state.group, :meter, state.name, marks, state.every)
 
     schedule_report(state.every)
 
