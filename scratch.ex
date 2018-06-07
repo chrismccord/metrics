@@ -35,3 +35,26 @@ defmodule Demo.Metrics do
     :ok
   end
 end
+
+defmodule DemoWeb.MetricChannel do
+  use MetricsDemoWeb, :channel
+
+  def join("metric:" <> _, _params, socket) do
+    Metrics.register(Demo.Metrics)
+    {:ok, socket}
+  end
+
+  def handle_info({:metric, :gauge, name, value, _timeframe}, socket) do
+    push socket, "gauge", %{name: name, value: value}
+    {:noreply, socket}
+  end
+  def handle_info({:metric, :meter, name, value, {count, unit}}, socket) do
+    push socket, "meter", %{
+      name: name,
+      value: value,
+      duration: %{count: count, unit: unit}
+    }
+    {:noreply, socket}
+  end
+end
+
