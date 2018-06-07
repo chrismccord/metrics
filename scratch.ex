@@ -1,4 +1,4 @@
-defmodule Demo.Metrics do
+defmodule MetricsDemo.Metrics do
   import Metrics
 
   def start_link do
@@ -13,7 +13,11 @@ defmodule Demo.Metrics do
   ## Gauges
 
   def memory(state) do
-    {:ok, :memsup.get_system_memory_data(), state}
+    mem = :memsup.get_system_memory_data()
+    value = Enum.into(mem, %{
+      usage: (1 - (mem[:free_memory] / mem[:total_memory])) * 100
+    })
+    {:ok, value, state}
   end
 
   def processes(state) do
@@ -30,11 +34,12 @@ defmodule Demo.Metrics do
   ## Instrumenters
 
   def phoenix_controller_call(:start, _compile, _runtime), do: :ok
-  def phoenix_controller_call(:stop, time_diff, :ok) do
+  def phoenix_controller_call(:stop, _time_diff, :ok) do
     Metrics.Meter.mark(__MODULE__, :requests)
     :ok
   end
 end
+
 
 defmodule DemoWeb.MetricChannel do
   use MetricsDemoWeb, :channel
